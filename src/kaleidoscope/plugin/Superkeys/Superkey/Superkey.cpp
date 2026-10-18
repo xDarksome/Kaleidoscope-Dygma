@@ -196,6 +196,39 @@ void Superkey::hold()
     superKeyState.triggered = true; // then, if we continue holding the key, we will set it as pressed, and take the corresponding actions.
 }
 
+bool Superkey::held_on_other_key_press_ = false;
+
+bool Superkey::consume_held_on_other_key_press()
+{
+    bool result = held_on_other_key_press_;
+    held_on_other_key_press_ = false;
+    return result;
+}
+
+// Whether this superkey should take on its hold action now that another key
+// was pressed: it must still be held on its first press, and its hold action
+// must be of a type enabled for hold-on-other-key-press.
+bool Superkey::holds_on_other_key_press() const
+{
+    if (!superkey_config_ || !superKeyState.pressed || superKeyState.released ||
+        superKeyState.tap_count != static_cast<uint8_t>(Utils::TapType::Hold_Once))
+    {
+        return false;
+    }
+
+    Key hold_action = getActionAsKey(superkey_config_, 1);
+    uint16_t raw = hold_action.getRaw();
+    if (raw >= Utils::LAYER_SHIFT_FIRST && raw <= Utils::LAYER_SHIFT_LAST)
+    {
+        return QUKEYS_HOLD_ON_OTHER_KEY_PRESS & 1;
+    }
+    if (ActionsDriver::isOnlyModifier(hold_action))
+    {
+        return QUKEYS_HOLD_ON_OTHER_KEY_PRESS & 2;
+    }
+    return false;
+}
+
 void Superkey::release()
 {
     superKeyState.pressed = false;  // Physical key is no longer pressed
@@ -223,6 +256,16 @@ bool Superkey::interrupt(Key &regular_key, const KeyAddr &keyaddr_)
     if (ActionsDriver::isOnlyModifier(regular_key))
     {
         ActionsDriver::send_modifier(regular_key, keyaddr_);
+        return false;
+    }
+
+    // With hold-on-other-key-press, another key press while the superkey is
+    // still held makes it take on its hold action right away. The key press
+    // itself is then handled normally (see SuperkeysHandler).
+    if (!superKeyState.holded && holds_on_other_key_press())
+    {
+        hold();
+        held_on_other_key_press_ = true;
         return false;
     }
 

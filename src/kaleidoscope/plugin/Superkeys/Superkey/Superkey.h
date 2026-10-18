@@ -24,6 +24,15 @@ constexpr uint8_t ACTIONS_IN_SUPERKEY = 6;
 constexpr uint8_t QUKEY_MIN_IDLE_ACTIONS = 3;
 constexpr uint8_t IDLE_KEY = 1;
 
+// Hold-on-other-key-press (like QMK's `HOLD_ON_OTHER_KEY_PRESS`) for
+// superkeys whose hold action is a layer shift (1) and/or a modifier (2): such
+// a superkey takes on its hold action as soon as another key is pressed while
+// it is held, instead of resolving as a tap. Shares its build-time setting with
+// the qukeys one. Off by default.
+#ifndef QUKEYS_HOLD_ON_OTHER_KEY_PRESS
+#define QUKEYS_HOLD_ON_OTHER_KEY_PRESS 0
+#endif
+
 class Superkey
 {
 public:
@@ -66,6 +75,10 @@ public:
   static void setActionRaw( action_config_t * p_action_config, uint16_t raw );
   static Key getActionAsKey( const action_config_t * p_action_config );
   static Key getActionAsKey( const superkey_config_t * p_superkey, uint16_t action_id );
+
+  // Returns whether a superkey took on its hold action because of a key press
+  // (hold-on-other-key-press) since the last call, and clears it.
+  static bool consume_held_on_other_key_press();
 
   Superkey();
   
@@ -112,6 +125,8 @@ private:
   void tap();
   void release();
   void hold();
+  bool holds_on_other_key_press() const;
+  static bool held_on_other_key_press_;
   void timeout();
 
   /**

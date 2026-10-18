@@ -26,6 +26,7 @@
 #include "kaleidoscope/plugin/SuperkeysHandler.h"
 #include "SuperkeysHandler.h"
 #include "kaleidoscope/plugin/Qukeys.h"
+#include "kaleidoscope/layers.h"
 
 #define DEFAULT_WAIT_FOR_MS             500
 #define DEFAULT_TRIGGER_TIMEOUT_MS      144
@@ -346,7 +347,21 @@ EventHandlerResult SuperkeysHandler::handle_regular_keys(Key &mapped_key, KeyAdd
 
         Utils::TimelineEntry entry = {mapped_key, key_addr, Utils::KeyType::NORMAL, nullptr};
 
-        if (timeline.add(entry))
+        bool interrupted = timeline.add(entry);
+
+        if (Superkey::consume_held_on_other_key_press())
+        {
+            // A superkey took on its hold action (e.g. a layer shift) because of
+            // this key press, so this key now has to come from the resulting
+            // layer. It is handled right away, so it doesn't need to stay in
+            // the timeline (where it could be replayed with its old value once
+            // the superkey is released).
+            Layer.updateLiveCompositeKeymap(key_addr);
+            mapped_key = Layer.lookup(key_addr);
+            timeline.remove(key_addr);
+        }
+
+        if (interrupted)
         {
             return EventHandlerResult::EVENT_CONSUMED;
         }
@@ -375,6 +390,9 @@ EventHandlerResult SuperkeysHandler::onKeyswitchEvent(Key &mapped_key, KeyAddr k
     {
         return EventHandlerResult::OK;
     }
+
+    // Don't let a hold-on-other-key-press flag from another event linger.
+    Superkey::consume_held_on_other_key_press();
 
     // If it's not a super-key press, we treat it here.
     if (IS_OUTSIDE_DYNAMIC_SUPER_RANGE(mapped_key.getRaw()))
