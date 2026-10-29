@@ -79,10 +79,12 @@ namespace Utils
         LED_BUTTONS_FIRST = 17152,
         PREVIOUS_LED_EFFECT,
         LED_BUTTONS_LAST,
+        // Cover the 32 layers layer_state_ can hold; layers beyond the
+        // configured count are ignored by Layer.
         LAYER_SHIFT_FIRST = 17450,
-        LAYER_SHIFT_LAST = 17459,
+        LAYER_SHIFT_LAST = LAYER_SHIFT_FIRST + 31,
         LAYER_LOCK_FIRST = 17492,
-        LAYER_LOCK_LAST = 17501
+        LAYER_LOCK_LAST = LAYER_LOCK_FIRST + 31
     };
 
     struct SKRanges
