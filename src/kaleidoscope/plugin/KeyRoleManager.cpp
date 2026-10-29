@@ -213,7 +213,8 @@ uint16_t KeyRoleManager::calculate_qukey_code(uint32_t hold_action_raw, uint16_t
     {
         // Get the layer index from the raw action
         int layer_idx = layerIndexFromRaw(hold_action_raw);
-        if (layer_idx < 0) {
+        // The DUL range only fits layers 0-7; higher layers stay Superkeys.
+        if (layer_idx < 0 || layer_idx > 7) {
             //NRF_LOG_DEBUG("  Invalid layer index for hold_action_raw=0x%08lX", hold_action_raw);
             return 0;
         }
@@ -281,7 +282,8 @@ Key KeyRoleManager::search_and_replace(Key key)
                 uint16_t qukey_code = replace_superkey_with_qukey(&action_0, &action_1);
                 //NRF_LOG_DEBUG("[SK->QK] SK:0x%04X tap:0x%04X(flags:0x%02X) -> QK:0x%04X", 
                 //              key.getRaw(), action_0.getRaw(), action_0.getFlags(), qukey_code);
-                return Key(qukey_code);
+                if (qukey_code != 0)
+                    return Key(qukey_code);
             }
         }
         
@@ -418,7 +420,7 @@ void KeyRoleManager::determine_key_role()
             {
                 // QUKEY - flags will be stored in modified_keys[] and restored when needed
                 uint16_t qukey_code = replace_superkey_with_qukey(&action_0, &action_1);
-                if(qukey_code != 0 || (qukey_code < ranges::DUL_FIRST || qukey_code > ranges::DUL_LAST))
+                if (qukey_code != 0)
                 {
                     // QUKEY DETECTED
                     // Here we save the qukey and superkey id for later use.
